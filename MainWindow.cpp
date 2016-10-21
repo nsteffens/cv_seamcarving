@@ -79,31 +79,18 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
     int imageWidth = workingCopy.size().width;
     int imageHeight = workingCopy.size().height;
 
-//    std::cout << workingCopy.at<cv::Vec3b>(10,114) << std::endl;
-
-    std::cout << imageWidth << " x " << imageHeight << std::endl;
-
     // Iterate over the whole image
     for(int x = 0; x <= imageWidth; x++){
         for(int y = 0; y <= imageHeight; y++){
 
             cv::Point currentLocation = cv::Point(x,y);
-            cv::Vec3b currentPixel = workingCopy.at<cv::Vec3b>(cv::Point(x,y));
+            // May be removed in the future:
+            // cv::Vec3b currentPixel = workingCopy.at<cv::Vec3b>(cv::Point(x,y));
 
-            // Wenn am Rand..
-            if(x == 0 || y == 0 || x == imageHeight || y == imageWidth ){
-                // .. dann Sonderbehandlung
+            int pixelEnergy = abs(sobelX(currentLocation)) + abs(sobelY(currentLocation));
 
-//                std::cout << "Rand!" << std::endl;
-
-            }else{
-
-                // Energiewert des Pixels = [abs(SobelX) + abs(SobelY)] / 2
-                int pixelEnergy = abs(sobelX(currentPixel, currentLocation)) + abs(sobelY(currentPixel, cv::Point(x,y)));
-
-                // Set the value of the energypixel to the energymap in fancy green (BGR Notation in openCV)
-                energyMap.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,pixelEnergy,0);
-            }
+            // Set the value of the energypixel to the energymap in fancy green (BGR Notation in openCV)
+            energyMap.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,pixelEnergy,0);
 
         }
 
@@ -118,12 +105,25 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
 /*
 
     Helper Function to calculate the energy value in X-direction for an vector
-    TODO: inputVector löschen...
 */
-int MainWindow::sobelX(const cv::Vec3b& inputVector, cv::Point pixelLocation){
+int MainWindow::sobelX(cv::Point pixelLocation){
 
-    cv::Vec3b right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
-    cv::Vec3b left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
+    cv::Vec3b left_to_x;
+    cv::Vec3b right_to_x;
+
+    const int right_border = workingCopy.size().width-1;
+
+    //Sonderbehandlung der Ränder
+    if(pixelLocation.x == 0){
+        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
+        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+    }else if(pixelLocation.x == right_border){
+        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
+    }else{
+        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
+        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
+    }
 
     // vgl. paper von avidan et al
     // Berechnung für jeden Kanal und danach Addition der Energiewerte
@@ -139,10 +139,24 @@ int MainWindow::sobelX(const cv::Vec3b& inputVector, cv::Point pixelLocation){
 
     same for Y-Direction
 */
-int MainWindow::sobelY(const cv::Vec3b& inputVector, cv::Point pixelLocation){
+int MainWindow::sobelY(cv::Point pixelLocation){
 
-    cv::Vec3b lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
-    cv::Vec3b upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
+    cv::Vec3b lower_to_x;
+    cv::Vec3b upper_to_x;
+
+    const int lower_border = workingCopy.size().height-1;
+
+    //Sonderbehandlung der Ränder
+    if(pixelLocation.y == 0){
+        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
+    }else if(pixelLocation.y == lower_border){
+        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
+        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+    }else{
+        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
+        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
+    }
 
     // vgl. paper von avidan et al
     // Berechnung für jeden Kanal und danach Addition der Energiewerte
@@ -152,7 +166,6 @@ int MainWindow::sobelY(const cv::Vec3b& inputVector, cv::Point pixelLocation){
 
     // Wieder in den [0..255] Raum bringen..
     return int((pixelEnergyB + pixelEnergyG + pixelEnergyR) / 3);
-
 }
 
 
