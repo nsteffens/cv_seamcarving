@@ -37,7 +37,7 @@ private slots:
     cv::Mat calculateEnergy(const cv::Mat&);
     int sobelX(cv::Point);
     int sobelY(cv::Point);
-    std::vector<cv::Point> findSeamV();
+    std::vector<cv::Point> findSeamH();
 
 private:
 
