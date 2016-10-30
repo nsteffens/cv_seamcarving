@@ -79,7 +79,6 @@ void MainWindow::on_pbComputeSeams_clicked()
 
        int y = seamH[x].y;
        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
-
     }
 
     cv::imshow("Seam Image", seamImage);
@@ -122,25 +121,33 @@ std::vector<cv::Point> MainWindow::findSeamH(){
 
            cv::Point currentLocation = cv::Point(x,y);
 
-           // We're looking at left neighbours here!
-           int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x-1,y)).val[1];
-           int lowerNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y+1)).val[1];
-           int upperNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
-
-           int self = energyMap.at<cv::Vec3b>(currentLocation).val[1];
+           //int self = energyMap.at<cv::Vec3b>(currentLocation).val[1];
            // Exception if there is no upper neighbour (upper border)
            if(y == 0){
                // Set value of x,y to min(lowerNeighbour, directNeighbour) + SELF
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x-1,y)).val[1];
+               int lowerNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y+1)).val[1];
+
                int value = std::min(directNeighbour, lowerNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
                wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
 
            // Exception if there is no lower neighbour  (lower border)
            }else if (y == wayfindingMatrix.size().height-1){
                // Set value of x,y to min(upperNeighbour, directNeighbour) + SELF
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x-1,y)).val[1];
+               int upperNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
+
                int value = std::min(directNeighbour, upperNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
                wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
            }else{
                // catch normal case..
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x-1,y)).val[1];
+               int lowerNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y+1)).val[1];
+               int upperNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
+
                int value = std::min(std::min(directNeighbour,lowerNeighbour),upperNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
                wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
            }
@@ -158,13 +165,12 @@ std::vector<cv::Point> MainWindow::findSeamH(){
 
     // First find the minimum in the last column
 
-    int min = 256; // Cant be higher than 255..
     cv::Point min_pos;
+    int min = 756; // Cant be higher than 255*3..
 
     for(int y = 0; y < wayfindingMatrix.size().height; y++){
-
         // Set X to right border column
-        int x = wayfindingMatrix.size().width;
+        int x = wayfindingMatrix.size().width-1;
 
         if(min > wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y)).val[1]){
             min = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y)).val[1];
@@ -178,17 +184,17 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     it = horizontalSeam.begin();
     horizontalSeam.insert(it, cv::Point(min_pos.x,min_pos.y));
 
+    int y_adjust = min_pos.y;
 
-    int y_adjust = 0;
 
     // Iterate over the wayfindingmatrix;
-    for(int x = wayfindingMatrix.size().width-1; x >= 0; x--){
+    for(int x = wayfindingMatrix.size().width-1; x > 0; x--){
 
        int y = y_adjust;
        cv::Point smallestNeighbour;
 
         // normal procedure if not on the top or bottom border
-       if(y != 0 && y != wayfindingMatrix.size().height){
+       if(y != 0 && y != wayfindingMatrix.size().height-1){
 
            // Look at the Elements at X-1/Y , X-1/Y+1 and X-1/Y-1 and select lowest
         cv::Vec3b upperNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x-1, y-1));
@@ -234,7 +240,7 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     }
 
     // Log the seam for debugging & checking
-//    std::cout << horizontalSeam << std::endl;
+std::cout << horizontalSeam << std::endl;
 
     return horizontalSeam;
 }
