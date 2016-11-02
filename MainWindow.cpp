@@ -64,7 +64,7 @@ void MainWindow::on_pbComputeSeams_clicked()
     /* .............. */
 
 
-    //std::vector<cv::Point> seamH = findSeamH();
+    std::vector<cv::Point> seamH = findSeamH();
     std::vector<cv::Point> seamV = findSeamV();
 
     /*
@@ -76,11 +76,23 @@ void MainWindow::on_pbComputeSeams_clicked()
     cv::Mat seamImage = originalImage.clone();
 
     // iterate over the whole width
-//    for(int x = 0; x < originalImage.size().width; x++){
+    for(int x = 0; x < originalImage.size().width; x++){
 
-//       int y = seamH[x].y;
-//       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
-//    }
+       int y = seamH[x].y;
+       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[0] = 0;
+       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[1] = 0;
+       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
+    }
+
+    // iterate over the whole height
+
+    for(int y = 0; y < originalImage.size().height; y++){
+
+        int x = seamV[y].x;
+        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[0] = 0;
+        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[1] = 0;
+        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
+    }
 
     cv::imshow("Seam Image", seamImage);
 
@@ -100,9 +112,6 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     // Vector with points where our seam goes along
     std::vector<cv::Point> horizontalSeam;
     std::vector<cv::Point>::iterator it;
-
-    // width = count of elements for one seam
-    //horizontalSeam.reserve(originalImage.size().width);
 
     // Finding the seam with dynamic programming:
     cv::Mat wayfindingMatrix = cv::Mat::zeros(energyMap.size(), energyMap.type());
@@ -150,11 +159,6 @@ std::vector<cv::Point> MainWindow::findSeamH(){
                int value = std::min(std::min(directNeighbour,lowerNeighbour),upperNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
                wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
            }
-
-           /* little check: printing out the wayfindingMatrix result.. CAN BE REMOVED */
-//           if(x == energyMap.size().width-1){
-            // std::cout << (int)wayfindingMatrix.at<cv::Vec3b>(currentLocation).val[1] + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1] << std::endl;
-//           }
         }
     }
 
@@ -264,8 +268,6 @@ std::vector<cv::Point> MainWindow::findSeamV(){
 
            cv::Point currentLocation = cv::Point(x,y);
 
-           //int self = energyMap.at<cv::Vec3b>(currentLocation).val[1];
-
            // Exception if there is no upper neighbour (upper border)
            if(x == 0){
                // Set value of x,y to min(lowerNeighbour, directNeighbour) + SELF
@@ -278,16 +280,16 @@ std::vector<cv::Point> MainWindow::findSeamV(){
 
            // Exception if there is no lower neighbour  (lower border)
            }else if (x == wayfindingMatrix.size().width-1){
-               // Set value of x,y to min(upperNeighbour, directNeighbour) + SELF
 
+               // Set value of x,y to min(leftNeighbour, directNeighbour) + SELF
                int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x,y-1)).val[1];
                int leftNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
 
                int value = std::min(directNeighbour, leftNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
                wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
            }else{
-               // catch normal case..
 
+               // catch normal case..
                int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x,y-1)).val[1];
                int leftNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
                int rightNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x+1,y-1)).val[1];
@@ -374,13 +376,7 @@ std::vector<cv::Point> MainWindow::findSeamV(){
     // Log the seam for debugging & checking
     std::cout << verticalSeam << std::endl;
 
-
     return verticalSeam;
-
-
-
-
-
 }
 
 /* Helper Function to calculate energyMap*/
