@@ -64,7 +64,8 @@ void MainWindow::on_pbComputeSeams_clicked()
     /* .............. */
 
 
-    std::vector<cv::Point> seamH = findSeamH();
+    //std::vector<cv::Point> seamH = findSeamH();
+    std::vector<cv::Point> seamV = findSeamV();
 
     /*
         Just display that one for now..
@@ -75,14 +76,13 @@ void MainWindow::on_pbComputeSeams_clicked()
     cv::Mat seamImage = originalImage.clone();
 
     // iterate over the whole width
-    for(int x = 0; x < originalImage.size().width; x++){
+//    for(int x = 0; x < originalImage.size().width; x++){
 
-       int y = seamH[x].y;
-       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
-    }
+//       int y = seamH[x].y;
+//       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
+//    }
 
     cv::imshow("Seam Image", seamImage);
-
 
 }
 
@@ -105,7 +105,6 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     //horizontalSeam.reserve(originalImage.size().width);
 
     // Finding the seam with dynamic programming:
-
     cv::Mat wayfindingMatrix = cv::Mat::zeros(energyMap.size(), energyMap.type());
 
     // Fill the first column with initial contour strength values
@@ -156,9 +155,7 @@ std::vector<cv::Point> MainWindow::findSeamH(){
 //           if(x == energyMap.size().width-1){
             // std::cout << (int)wayfindingMatrix.at<cv::Vec3b>(currentLocation).val[1] + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1] << std::endl;
 //           }
-
         }
-
     }
 
     // Finished the wayfindingMatrix calculation. Now find the cheapest path heading back to the start
@@ -240,9 +237,150 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     }
 
     // Log the seam for debugging & checking
-std::cout << horizontalSeam << std::endl;
+    //std::cout << horizontalSeam << std::endl;
 
     return horizontalSeam;
+}
+
+
+std::vector<cv::Point> MainWindow::findSeamV(){
+
+    // Vector with points where our seam goes along
+    std::vector<cv::Point> verticalSeam;
+    std::vector<cv::Point>::iterator it;
+
+    cv::Mat wayfindingMatrix = cv::Mat::zeros(energyMap.size(), energyMap.type());
+
+    // Fill the first column with initial contour strength values
+    for(int x = 0; x < wayfindingMatrix.size().width; x++){
+        int value = energyMap.at<cv::Vec3b>(cv::Point(x,0)).val[1];
+        wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,0)) = cv::Vec3b(0,value,0);
+    }
+
+    // Calculate the rest and fill the matrix..
+    // We don't need calculate the first column, so x = 1;
+    for(int y = 1; y < energyMap.size().height; y++){
+        for(int x = 0; x < energyMap.size().width; x++){
+
+           cv::Point currentLocation = cv::Point(x,y);
+
+           //int self = energyMap.at<cv::Vec3b>(currentLocation).val[1];
+
+           // Exception if there is no upper neighbour (upper border)
+           if(x == 0){
+               // Set value of x,y to min(lowerNeighbour, directNeighbour) + SELF
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x,y-1)).val[1];
+               int rightNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x+1,y-1)).val[1];
+
+               int value = std::min(directNeighbour, rightNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
+               wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
+
+           // Exception if there is no lower neighbour  (lower border)
+           }else if (x == wayfindingMatrix.size().width-1){
+               // Set value of x,y to min(upperNeighbour, directNeighbour) + SELF
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x,y-1)).val[1];
+               int leftNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
+
+               int value = std::min(directNeighbour, leftNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
+               wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
+           }else{
+               // catch normal case..
+
+               int directNeighbour  = energyMap.at<cv::Vec3b>(cv::Point(x,y-1)).val[1];
+               int leftNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x-1,y-1)).val[1];
+               int rightNeighbour   = energyMap.at<cv::Vec3b>(cv::Point(x+1,y-1)).val[1];
+
+               int value = std::min(std::min(directNeighbour,leftNeighbour),rightNeighbour) + (int)energyMap.at<cv::Vec3b>(currentLocation).val[1];
+               wayfindingMatrix.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,value,0);
+           }
+        }
+    }
+
+    cv::Point min_pos;
+    int min = 756; // Cant be higher than 255*3..
+
+    for(int x = 0; x < wayfindingMatrix.size().width; x++){
+        // Set X to right border column
+        int y = wayfindingMatrix.size().height-1;
+
+        if(min > wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y)).val[1]){
+            min = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y)).val[1];
+            min_pos = cv::Point(x,y);
+        }
+    }
+    // Print the found minimum in the last row
+    std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
+    it = verticalSeam.begin();
+    verticalSeam.insert(it, cv::Point(min_pos.x,min_pos.y));
+
+
+    // Start going upwards and add elements of the seam based on the wf-Matrix
+
+    int x_adjust = min_pos.x;
+
+
+    for(int y = wayfindingMatrix.size().height-1; y > 0; y--){
+
+       int x = x_adjust;
+       cv::Point smallestNeighbour;
+
+        // normal procedure if not on the left or right border
+       if(x != 0 && x != wayfindingMatrix.size().width-1){
+
+           // Look at the Elements at X-1/Y , X-1/Y+1 and X-1/Y-1 and select lowest
+        cv::Vec3b leftNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x-1, y-1));
+        cv::Vec3b directNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y-1));
+        cv::Vec3b rightNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x+1, y-1));
+
+        if(leftNeighbour.val[1] < directNeighbour.val[1] && leftNeighbour.val[1] < rightNeighbour.val[1]){
+            smallestNeighbour = cv::Point(x-1, y-1);
+        }else if(directNeighbour.val[1] < rightNeighbour.val[1] && directNeighbour.val[1] < leftNeighbour.val[1]){
+             smallestNeighbour = cv::Point(x, y-1);
+        }else{
+            smallestNeighbour = cv::Point(x+1,y-1);
+        }
+
+       // catch border cases --> x == 0 --> left border
+       }else if(x == 0){
+           cv::Vec3b directNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y-1));
+           cv::Vec3b rightNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x+1, y-1));
+            if(directNeighbour.val[1] < rightNeighbour.val[1]){
+               smallestNeighbour = cv::Point(x, y-1);
+           }else{
+               smallestNeighbour = cv::Point(x+1,y-1);
+           }
+
+       }else{
+           // must be the case x = right border
+           cv::Vec3b directNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,y-1));
+           cv::Vec3b leftNeighbour = wayfindingMatrix.at<cv::Vec3b>(cv::Point(x-1, y-1));
+           if(directNeighbour.val[1] < leftNeighbour.val[1]){
+               smallestNeighbour = cv::Point(x, y-1);
+           }else{
+               smallestNeighbour = cv::Point(x-1, y-1);
+           }
+       }
+
+       //Add to verticalSeam
+       it = verticalSeam.begin();
+       verticalSeam.insert(it, smallestNeighbour);
+
+       x_adjust = smallestNeighbour.x;
+
+    }
+
+    // Log the seam for debugging & checking
+    std::cout << verticalSeam << std::endl;
+
+
+    return verticalSeam;
+
+
+
+
+
 }
 
 /* Helper Function to calculate energyMap*/
@@ -270,9 +408,7 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
             energyMap.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,pixelEnergy,0);
 
         }
-
     }
-
     cv::imshow("Energy Map", energyMap);
     return energyMap;
 }

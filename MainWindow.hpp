@@ -38,6 +38,7 @@ private slots:
     int sobelX(cv::Point);
     int sobelY(cv::Point);
     std::vector<cv::Point> findSeamH();
+    std::vector<cv::Point> findSeamV();
 
 private:
 
