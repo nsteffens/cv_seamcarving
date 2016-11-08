@@ -39,6 +39,8 @@ private slots:
     int sobelY(cv::Point);
     std::vector<cv::Point> findSeamH();
     std::vector<cv::Point> findSeamV();
+    cv::Mat removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
+//    cv::Mat removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
 
 private:
 
@@ -72,6 +74,9 @@ private:
     /* Eventuel weitere Klassenattribute */
     cv::Mat         workingCopy;
     cv::Mat         energyMap;
+
+    std::vector<std::vector<cv::Point>> seamsV;
+    std::vector<std::vector<cv::Point>> seamsH;
     
     /* Methode initialisiert die UI */
     void setupUi();

@@ -40,9 +40,12 @@ void MainWindow::on_pbOpenImage_clicked()
             /* ... zeige das Originalbild in einem separaten Fenster an */
             cv::imshow("Original Image", originalImage); 
 
+//            energyMap = calculateEnergy(originalImage);
+
+//            cv::imshow("EnergyMap", energyMap);
 
             /* added: calculate Energy nach dem Einladen!*/
-            calculateEnergy(originalImage);
+//            calculateEnergy(originalImage);
 
         }
         else
@@ -63,9 +66,27 @@ void MainWindow::on_pbComputeSeams_clicked()
     
     /* .............. */
 
+    // Initial Energymap
+    energyMap = calculateEnergy(originalImage);
+    cv::imshow("EnergyMap", energyMap);
 
-    std::vector<cv::Point> seamH = findSeamH();
-    std::vector<cv::Point> seamV = findSeamV();
+    // Generate Seams and push to fitting vector
+    for(int i = 0; i < colsToRemove; i++){
+
+        seamsV.push_back(findSeamV());
+
+        if(i < rowsToRemove)
+           seamsH.push_back(findSeamH());
+    }
+
+    // Debugging stuff
+//    std::cout << seamsV[0] << std::endl;
+//    std::cout << seamsV[1] << std::endl;
+//    std::cout << seamsH.size() << std::endl;
+
+   std::vector<cv::Point> seamH = findSeamH();
+   std::vector<cv::Point> seamV = findSeamV();
+
 
     /*
         Just display that one for now..
@@ -104,6 +125,42 @@ void MainWindow::on_pbRemoveSeams_clicked()
 
 
 
+
+    removeSeamV(originalImage, seamsV[0]);
+
+
+}
+
+
+cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam){
+
+    for (int y = 0; y < inputMat.size().height; ++y) {
+
+        // Start at the Seam and move every pixel on the right side of the seam to the left
+        // inputMat.size().width-1 because last column is empty (and will be removed..)!
+        for (int x = inputSeam[y].x; x < inputMat.size().width-1; ++x){
+
+            inputMat.at<cv::Vec3b>(cv::Point(x,y)) = inputMat.at<cv::Vec3b>(cv::Point(x+1, y));
+
+        }
+    }
+
+
+    cv::Mat outputMat = inputMat(cv::Rect(0,0,inputMat.size().width-1,inputMat.size().height)).clone();
+    cv::imshow("Removed Seam V", outputMat);
+
+
+//    cv::Mat outputMat = cv::Mat(inputMat.size().height, inputMat.size().width-1, inputMat.type());
+
+//    cv::imshow("Removed Seam V", outputMat);
+
+    // Update Energy Map
+    //computeEnergy(outputMat);
+
+    std::cout << outputMat.size().width << std::endl;
+    std::cout << inputMat.size().width << std::endl;
+
+    return outputMat;
 }
 
 
@@ -179,7 +236,7 @@ std::vector<cv::Point> MainWindow::findSeamH(){
         }
     }
     // Print the found minimum in the last column
-    std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
+    //std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
 
     // Add the start of the seam;
     it = horizontalSeam.begin();
@@ -313,7 +370,7 @@ std::vector<cv::Point> MainWindow::findSeamV(){
         }
     }
     // Print the found minimum in the last row
-    std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
+//    std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
     it = verticalSeam.begin();
     verticalSeam.insert(it, cv::Point(min_pos.x,min_pos.y));
 
@@ -374,7 +431,7 @@ std::vector<cv::Point> MainWindow::findSeamV(){
     }
 
     // Log the seam for debugging & checking
-    std::cout << verticalSeam << std::endl;
+//    std::cout << verticalSeam << std::endl;
 
     return verticalSeam;
 }
@@ -395,8 +452,6 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
         for(int y = 0; y <= imageHeight; y++){
 
             cv::Point currentLocation = cv::Point(x,y);
-            // May be removed in the future:
-            // cv::Vec3b currentPixel = workingCopy.at<cv::Vec3b>(cv::Point(x,y));
 
             int pixelEnergy = abs(sobelX(currentLocation)) + abs(sobelY(currentLocation));
 
@@ -405,7 +460,8 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
 
         }
     }
-    cv::imshow("Energy Map", energyMap);
+    // Display the energyMap
+//    cv::imshow("Energy Map", energyMap);
     return energyMap;
 }
 
