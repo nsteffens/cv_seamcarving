@@ -34,13 +34,14 @@ private slots:
     void on_pbOpenImage_clicked();
     void on_pbComputeSeams_clicked();
     void on_pbRemoveSeams_clicked();
-    cv::Mat calculateEnergy(const cv::Mat&);
-    int sobelX(cv::Point);
-    int sobelY(cv::Point);
+    cv::Mat calculateEnergy(cv::Mat inputImage);
+    int sobelX(cv::Point, cv::Mat inputImage);
+    int sobelY(cv::Point, cv::Mat inputImage);
     std::vector<cv::Point> findSeamH();
     std::vector<cv::Point> findSeamV();
     cv::Mat removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
-//    cv::Mat removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
+    cv::Mat removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
+    cv::Mat drawSeam(std::vector<cv::Point> seam, cv::Mat Image);
 
 private:
 
@@ -72,7 +73,7 @@ private:
     /* Originalbild */
     cv::Mat         originalImage;
     /* Eventuel weitere Klassenattribute */
-    cv::Mat         workingCopy;
+    //cv::Mat         workingCopy;
     cv::Mat         energyMap;
 
     std::vector<std::vector<cv::Point>> seamsV;

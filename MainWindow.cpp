@@ -66,57 +66,109 @@ void MainWindow::on_pbComputeSeams_clicked()
     
     /* .............. */
 
-    // Initial Energymap
-    energyMap = calculateEnergy(originalImage);
-    cv::imshow("EnergyMap", energyMap);
+    // Erstellen einer Arbeitskopie
+    cv::Mat workingCopy = originalImage.clone();
+    cv::Mat seamImage = originalImage.clone();
+    //originalImage.copyTo(workingCopy);
+    //originalImage.copyTo(seamImage);
+    //workingCopy = originalImage.clone();
 
     // Generate Seams and push to fitting vector
+
+
+
+
+    cv::Mat tmpEnergyMap = calculateEnergy(workingCopy);
+    //cv::imshow("tmpEM", tmpEnergyMap);
+    std::cout << tmpEnergyMap << std::endl;
+
+
+
+
     for(int i = 0; i < colsToRemove; i++){
 
-        seamsV.push_back(findSeamV());
+        /* First: Vertical Seams */
 
-        if(i < rowsToRemove)
-           seamsH.push_back(findSeamH());
+        // Calculate EnergyMap
+
+        cv::Mat tmpEnergyMap = calculateEnergy(workingCopy);
+
+        energyMap = tmpEnergyMap;
+
+        std::vector<cv::Point> tmpSeamV = findSeamV();
+
+        std::cout << tmpSeamV << std::endl;
+
+        // Calculate Seam
+        //std::vector<cv::Point> tmpSeamV = findSeamV();
+
+
+
+        // Remove Seam from Image
+        //cv::Mat testMat = originalImage.clone();
+
+        // Not good in the loop.. change that later
+
+        //seamImage = drawSeam(tmpSeamV, seamImage);
+
+        //cv::imshow("emap", energyMap);
+        //cv::imshow("wcopy", workingCopy);
+        //workingCopy = removeSeamV(workingCopy, tmpSeamV);
+
     }
+
+    //cv::imshow("seamimage", seamImage);
+
+//    for(int i = 0; i < rowsToRemove; i++){
+
+//        /* Second: Horizontal Seams */
+
+//        // Calculate EnergyMap
+//        energyMap = calculateEnergy(workingCopy);
+//        // Calculate Seam
+//        std::vector<cv::Point> tmpSeamH = findSeamH();
+
+//        // Draw seam on originalImage
+//        drawSeam(tmpSeamH);
+
+//        // Remove Seam from Image
+//        workingCopy = removeSeamH(workingCopy, tmpSeamH);
+
+//    }
+
+    /*
+        Current state:  originalImage == untouched
+                        workingCopy == finished shrinked Image
+                        energyMap == one iteration old workingCopy's energy
+
+    */
+
+
+    /* Third: Display the seams for the user */
+
+//    cv::imshow("Seam Image", originalImage);
+
+
+/*
 
     // Debugging stuff
 //    std::cout << seamsV[0] << std::endl;
 //    std::cout << seamsV[1] << std::endl;
 //    std::cout << seamsH.size() << std::endl;
 
-   std::vector<cv::Point> seamH = findSeamH();
-   std::vector<cv::Point> seamV = findSeamV();
+//   std::vector<cv::Point> seamH = findSeamH();
+//   std::vector<cv::Point> seamV = findSeamV();
 
 
-    /*
-        Just display that one for now..
-        using simple 0815-for-loop to do that..
-    */
 
 
-    cv::Mat seamImage = originalImage.clone();
+//    cv::Mat seamImage = originalImage.clone();
 
-    // iterate over the whole width
-    for(int x = 0; x < originalImage.size().width; x++){
 
-       int y = seamH[x].y;
-       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[0] = 0;
-       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[1] = 0;
-       seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
-    }
-
-    // iterate over the whole height
-
-    for(int y = 0; y < originalImage.size().height; y++){
-
-        int x = seamV[y].x;
-        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[0] = 0;
-        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[1] = 0;
-        seamImage.at<cv::Vec3b>(cv::Point(x,y)).val[2] = 255;
-    }
 
     cv::imshow("Seam Image", seamImage);
 
+    */
 }
 
 void MainWindow::on_pbRemoveSeams_clicked()
@@ -124,13 +176,27 @@ void MainWindow::on_pbRemoveSeams_clicked()
     /* .............. */
 
 
+    //cv::imshow("Finish", workingCopy);
 
-
-    removeSeamV(originalImage, seamsV[0]);
+//    removeSeamV(originalImage, seamsV[0]);
 
 
 }
 
+cv::Mat MainWindow::drawSeam(std::vector<cv::Point> seam, cv::Mat Image){
+    for(int i = 0; i < (int)seam.size(); i++){
+
+        // Maybe create another image to display the seam and dont operate directly on the origImg
+
+        cv::Point currentPixel = cv::Point(seam[i].x, seam[i].y);
+        Image.at<cv::Vec3b>(currentPixel).val[0] = 0;
+        Image.at<cv::Vec3b>(currentPixel).val[1] = 0;
+        Image.at<cv::Vec3b>(currentPixel).val[2] = 255;
+
+    }
+
+    return Image;
+}
 
 cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam){
 
@@ -147,7 +213,7 @@ cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSe
 
 
     cv::Mat outputMat = inputMat(cv::Rect(0,0,inputMat.size().width-1,inputMat.size().height)).clone();
-    cv::imshow("Removed Seam V", outputMat);
+    //cv::imshow("Removed Seam V", outputMat);
 
 
 //    cv::Mat outputMat = cv::Mat(inputMat.size().height, inputMat.size().width-1, inputMat.type());
@@ -163,6 +229,14 @@ cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSe
     return outputMat;
 }
 
+cv:: Mat MainWindow::removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam){
+
+    cv::Mat transposedMat;
+
+    cv::transpose(inputMat, transposedMat);
+
+    return removeSeamV(transposedMat, inputSeam);
+}
 
 std::vector<cv::Point> MainWindow::findSeamH(){
 
@@ -303,7 +377,6 @@ std::vector<cv::Point> MainWindow::findSeamH(){
     return horizontalSeam;
 }
 
-
 std::vector<cv::Point> MainWindow::findSeamV(){
 
     // Vector with points where our seam goes along
@@ -437,15 +510,19 @@ std::vector<cv::Point> MainWindow::findSeamV(){
 }
 
 /* Helper Function to calculate energyMap*/
-cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
+cv::Mat MainWindow::calculateEnergy(cv::Mat inputImage){
 
-    energyMap = cv::Mat::zeros(inputImage.size(), inputImage.type());
+    // GrayScale EnergyMap
+    cv::Mat energyMap2 = cv::Mat::zeros(inputImage.size(), CV_32S);
+
+    //std::cout << energyMap2 << std::endl;
+
 
     // Hier abfangen wenn Col/Row schon removed wurde
-    workingCopy = originalImage.clone();
+    // workingCopy = originalImage.clone();
 
-    int imageWidth = workingCopy.size().width;
-    int imageHeight = workingCopy.size().height;
+    int imageWidth = inputImage.size().width;
+    int imageHeight = inputImage.size().height;
 
     // Iterate over the whole image
     for(int x = 0; x <= imageWidth; x++){
@@ -453,40 +530,39 @@ cv::Mat MainWindow::calculateEnergy(const cv::Mat& inputImage){
 
             cv::Point currentLocation = cv::Point(x,y);
 
-            int pixelEnergy = abs(sobelX(currentLocation)) + abs(sobelY(currentLocation));
+            int pixelEnergy = abs(sobelX(currentLocation, inputImage)) + abs(sobelY(currentLocation, inputImage));
 
             // Set the value of the energypixel to the energymap in fancy green (BGR Notation in openCV)
-            energyMap.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,pixelEnergy,0);
+            energyMap2.at<int>(currentLocation) = pixelEnergy;
 
         }
     }
+    std::cout << energyMap2 << std::endl;
     // Display the energyMap
-//    cv::imshow("Energy Map", energyMap);
-    return energyMap;
+    return energyMap2;
 }
-
 
 /*
 
     Helper Function to calculate the energy value in X-direction for an vector
 */
-int MainWindow::sobelX(cv::Point pixelLocation){
+int MainWindow::sobelX(cv::Point pixelLocation, cv::Mat inputImage){
 
     cv::Vec3b left_to_x;
     cv::Vec3b right_to_x;
 
-    const int right_border = workingCopy.size().width-1;
+    int right_border = inputImage.size().width-1;
 
     //Sonderbehandlung der Ränder
     if(pixelLocation.x == 0){
-        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
-        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        right_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
+        left_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
     }else if(pixelLocation.x == right_border){
-        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
-        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
+        right_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        left_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
     }else{
-        right_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
-        left_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
+        right_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x+1,pixelLocation.y));
+        left_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x-1,pixelLocation.y));
     }
 
     // vgl. paper von avidan et al
@@ -504,23 +580,23 @@ int MainWindow::sobelX(cv::Point pixelLocation){
 
     same for Y-Direction
 */
-int MainWindow::sobelY(cv::Point pixelLocation){
+int MainWindow::sobelY(cv::Point pixelLocation, cv::Mat inputImage){
 
     cv::Vec3b lower_to_x;
     cv::Vec3b upper_to_x;
 
-    const int lower_border = workingCopy.size().height-1;
+    int lower_border = inputImage.size().height-1;
 
     //Sonderbehandlung der Ränder
     if(pixelLocation.y == 0){
-        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
-        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
+        upper_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        lower_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
     }else if(pixelLocation.y == lower_border){
-        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
-        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
+        upper_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
+        lower_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y));
     }else{
-        upper_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
-        lower_to_x = workingCopy.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
+        upper_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y-1));
+        lower_to_x = inputImage.at<cv::Vec3b>(cv::Point(pixelLocation.x,pixelLocation.y+1));
     }
 
     // vgl. paper von avidan et al
