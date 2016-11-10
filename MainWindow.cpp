@@ -66,60 +66,62 @@ void MainWindow::on_pbComputeSeams_clicked()
     
     /* .............. */
 
-    // Erstellen einer Arbeitskopie
-    cv::Mat workingCopy = originalImage.clone();
-    cv::Mat seamImage = originalImage.clone();
-    //originalImage.copyTo(workingCopy);
-    //originalImage.copyTo(seamImage);
-    //workingCopy = originalImage.clone();
+    /*NEW CODE*/
 
-    // Generate Seams and push to fitting vector
+    std::cout << "Processing..." << std::endl;
+
+    workingCopy = originalImage.clone();
+
+    // Loop for vertical seams
+   for (int i = 0; i < colsToRemove; i++){
+
+       // Energymap berechnen
+       energyMap = calculateEnergy(workingCopy);
+
+       //cv::imshow("energyMap", energyMap);
+
+       // Seam berechnen
+
+       std::vector<cv::Point> tmpSeamV = findSeamV();
+
+       //std::cout << tmpSeamV << std::endl;
+
+       // löschen des Seams + stitching
+
+       workingCopy = removeSeamV(workingCopy, tmpSeamV);
+
+   }
+
+   // Prepared horizontal seam removal
+//   for (int i = 0; i < rowsToRemove; i++){
+//       // Energymap berechnen
+//       energyMap = calculateEnergy(workingCopy);
+
+//       // Seam berechnen
+
+//       std::vector<cv::Point> tmpSeamH = findSeamH();
+
+//       //std::cout << tmpSeamV << std::endl;
+
+//       // löschen des Seams + stitching
+
+//       workingCopy = removeSeamH(workingCopy, tmpSeamH);
+//   }
+
+
+   cv::imshow("Removed img", workingCopy);
 
 
 
+    /*END NEW CODE*/
 
-    cv::Mat tmpEnergyMap = calculateEnergy(workingCopy);
-    //cv::imshow("tmpEM", tmpEnergyMap);
-    std::cout << tmpEnergyMap << std::endl;
+    // Debugging stuff
+//    std::cout << seamsV[0] << std::endl;
+//    std::cout << seamsV[1] << std::endl;
+//    std::cout << seamsH.size() << std::endl;
 
-
-
-
-    for(int i = 0; i < colsToRemove; i++){
-
-        /* First: Vertical Seams */
-
-        // Calculate EnergyMap
-
-        cv::Mat tmpEnergyMap = calculateEnergy(workingCopy);
-
-        energyMap = tmpEnergyMap;
-
-        std::vector<cv::Point> tmpSeamV = findSeamV();
-
-        std::cout << tmpSeamV << std::endl;
-
-        // Calculate Seam
-        //std::vector<cv::Point> tmpSeamV = findSeamV();
-
-
-
-        // Remove Seam from Image
-        //cv::Mat testMat = originalImage.clone();
-
-        // Not good in the loop.. change that later
-
-        //seamImage = drawSeam(tmpSeamV, seamImage);
-
-        //cv::imshow("emap", energyMap);
-        //cv::imshow("wcopy", workingCopy);
-        //workingCopy = removeSeamV(workingCopy, tmpSeamV);
-
-    }
-
-    //cv::imshow("seamimage", seamImage);
-
-//    for(int i = 0; i < rowsToRemove; i++){
+//   std::vector<cv::Point> seamH = findSeamH();
+//   std::vector<cv::Point> seamV = findSeamV();
 
 //        /* Second: Horizontal Seams */
 
@@ -143,8 +145,8 @@ void MainWindow::on_pbComputeSeams_clicked()
 
     */
 
-
-    /* Third: Display the seams for the user */
+/*
+    cv::Mat seamImage = originalImage.clone();
 
 //    cv::imshow("Seam Image", originalImage);
 
@@ -211,8 +213,9 @@ cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSe
         }
     }
 
+    cv::Mat cropped = inputMat(cv::Rect(0,0,inputMat.size().width-1,inputMat.size().height));
 
-    cv::Mat outputMat = inputMat(cv::Rect(0,0,inputMat.size().width-1,inputMat.size().height)).clone();
+    cv::Mat outputMat = cropped.clone();
     //cv::imshow("Removed Seam V", outputMat);
 
 
@@ -385,7 +388,7 @@ std::vector<cv::Point> MainWindow::findSeamV(){
 
     cv::Mat wayfindingMatrix = cv::Mat::zeros(energyMap.size(), energyMap.type());
 
-    // Fill the first column with initial contour strength values
+    // Fill the first row with initial contour strength values
     for(int x = 0; x < wayfindingMatrix.size().width; x++){
         int value = energyMap.at<cv::Vec3b>(cv::Point(x,0)).val[1];
         wayfindingMatrix.at<cv::Vec3b>(cv::Point(x,0)) = cv::Vec3b(0,value,0);
@@ -515,31 +518,20 @@ cv::Mat MainWindow::calculateEnergy(cv::Mat inputImage){
     // GrayScale EnergyMap
     cv::Mat energyMap2 = cv::Mat::zeros(inputImage.size(), CV_32S);
 
-    //std::cout << energyMap2 << std::endl;
-
-
-    // Hier abfangen wenn Col/Row schon removed wurde
-    // workingCopy = originalImage.clone();
-
     int imageWidth = inputImage.size().width;
     int imageHeight = inputImage.size().height;
 
     // Iterate over the whole image
-    for(int x = 0; x <= imageWidth; x++){
-        for(int y = 0; y <= imageHeight; y++){
-
+    for(int x = 0; x < imageWidth; x++){
+        for(int y = 0; y < imageHeight; y++){
             cv::Point currentLocation = cv::Point(x,y);
-
-            int pixelEnergy = abs(sobelX(currentLocation, inputImage)) + abs(sobelY(currentLocation, inputImage));
-
+            int pixelEnergy = abs(sobelX(currentLocation)) + abs(sobelY(currentLocation));
             // Set the value of the energypixel to the energymap in fancy green (BGR Notation in openCV)
-            energyMap2.at<int>(currentLocation) = pixelEnergy;
-
+            energyMap.at<cv::Vec3b>(currentLocation) = cv::Vec3b(0,pixelEnergy,0);
         }
     }
-    std::cout << energyMap2 << std::endl;
-    // Display the energyMap
-    return energyMap2;
+
+    return energyMap;
 }
 
 /*
@@ -585,7 +577,7 @@ int MainWindow::sobelY(cv::Point pixelLocation, cv::Mat inputImage){
     cv::Vec3b lower_to_x;
     cv::Vec3b upper_to_x;
 
-    int lower_border = inputImage.size().height-1;
+    int lower_border = workingCopy.size().height-1;
 
     //Sonderbehandlung der Ränder
     if(pixelLocation.y == 0){
