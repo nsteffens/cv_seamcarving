@@ -41,7 +41,6 @@ private slots:
     std::vector<cv::Point> findSeamV();
     cv::Mat removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
     cv::Mat removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam);
-    cv::Mat drawSeam(std::vector<cv::Point> seam, cv::Mat Image);
 
 private:
 
