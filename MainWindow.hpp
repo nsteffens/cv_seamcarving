@@ -34,6 +34,8 @@ private slots:
     void on_pbOpenImage_clicked();
     void on_pbComputeSeams_clicked();
     void on_pbRemoveSeams_clicked();
+
+    /* My added functions */
     cv::Mat calculateEnergy(cv::Mat);
     int sobelX(cv::Point);
     int sobelY(cv::Point);

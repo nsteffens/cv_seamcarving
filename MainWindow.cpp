@@ -40,13 +40,6 @@ void MainWindow::on_pbOpenImage_clicked()
             /* ... zeige das Originalbild in einem separaten Fenster an */
             cv::imshow("Original Image", originalImage); 
 
-//            energyMap = calculateEnergy(originalImage);
-
-//            cv::imshow("EnergyMap", energyMap);
-
-            /* added: calculate Energy nach dem Einladen!*/
-//            calculateEnergy(originalImage);
-
         }
         else
         {
@@ -109,7 +102,15 @@ void MainWindow::on_pbRemoveSeams_clicked()
 
 }
 
-
+/**
+ * @brief MainWindow::removeSeamV
+ *
+ *      Removes a given vertical Seam and returns the new image
+ *
+ * @param inputMat      the image matrix where the seam should be removed
+ * @param inputSeam     the seam that will be removed - Needs to be a vertical seam
+ * @return outputMat    the stitched image matrix without the seam pixels
+ */
 cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSeam){
 
     for (int y = 0; y < inputMat.size().height; ++y) {
@@ -128,6 +129,15 @@ cv::Mat MainWindow::removeSeamV(cv::Mat inputMat, std::vector<cv::Point> inputSe
     return outputMat;
 }
 
+/**
+ * @brief MainWindow::removeSeamH
+ *
+ *      Removes a given vertical Seam and returns the new image
+ *
+ * @param inputMat      the image matrix where the seam should be removed
+ * @param inputSeam     the seam that will be removed - Needs to be a horizontal seam
+ * @return outputMat    the stitched image matrix without the seam pixels
+ */
 cv::Mat MainWindow::removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSeam){
 
     // Analog to removeSeamV - now moving everything below the seam upwards
@@ -142,6 +152,14 @@ cv::Mat MainWindow::removeSeamH(cv::Mat inputMat, std::vector<cv::Point> inputSe
     return outputMat;
 }
 
+
+/**
+ * @brief MainWindow::findSeamH
+ *
+ * Finds an horizontal seam based on the current energyMap
+ *
+ * @return horizontalSeam
+ */
 std::vector<cv::Point> MainWindow::findSeamH(){
 
     // Vector with points where our seam goes along
@@ -213,15 +231,12 @@ std::vector<cv::Point> MainWindow::findSeamH(){
             min_pos = cv::Point(x,y);
         }
     }
-    // Print the found minimum in the last column
-    //std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
 
     // Add the start of the seam;
     it = horizontalSeam.begin();
     horizontalSeam.insert(it, cv::Point(min_pos.x,min_pos.y));
 
     int y_adjust = min_pos.y;
-
 
     // Iterate over the wayfindingmatrix;
     for(int x = wayfindingMatrix.size().width-1; x > 0; x--){
@@ -275,13 +290,16 @@ std::vector<cv::Point> MainWindow::findSeamH(){
 
     }
 
-    // Log the seam for debugging & checking
-    //std::cout << horizontalSeam << std::endl;
-
     return horizontalSeam;
 }
 
-
+/**
+ * @brief MainWindow::findSeamV
+ *
+ * Finds an vertical seam based on the current energyMap
+ *
+ * @return verticalSeam
+ */
 std::vector<cv::Point> MainWindow::findSeamV(){
 
     // Vector with points where our seam goes along
@@ -347,16 +365,12 @@ std::vector<cv::Point> MainWindow::findSeamV(){
             min_pos = cv::Point(x,y);
         }
     }
-    // Print the found minimum in the last row
-//    std::cout << "X: " << min_pos.x << " Y: " << min_pos.y << std::endl;
+
     it = verticalSeam.begin();
     verticalSeam.insert(it, cv::Point(min_pos.x,min_pos.y));
 
-
     // Start going upwards and add elements of the seam based on the wf-Matrix
-
     int x_adjust = min_pos.x;
-
 
     for(int y = wayfindingMatrix.size().height-1; y > 0; y--){
 
@@ -408,13 +422,17 @@ std::vector<cv::Point> MainWindow::findSeamV(){
 
     }
 
-    // Log the seam for debugging & checking
-//    std::cout << verticalSeam << std::endl;
-
     return verticalSeam;
 }
 
-/* Helper Function to calculate energyMap*/
+/**
+ * @brief MainWindow::calculateEnergy
+ *
+ *  Calculates the EnergyMap for a given image
+ *
+ * @param inputImage    Image matrix for which the energy is written in the energyMap
+ * @return void
+ */
 cv::Mat MainWindow::calculateEnergy(cv::Mat inputImage){
 
     energyMap = cv::Mat::zeros(inputImage.size(), inputImage.type());
@@ -435,11 +453,14 @@ cv::Mat MainWindow::calculateEnergy(cv::Mat inputImage){
     return energyMap;
 }
 
-
-/*
-
-    Helper Function to calculate the energy value in X-direction for an vector
-*/
+/**
+ * @brief MainWindow::sobelX
+ *
+ *      Applies the sobel filter in X-direction on the workingCopy at the given pixelLocation
+ *
+ * @param pixelLocation cv::Point Location of the pixel where the sobel filter in x-direction is applied
+ * @return new pixel value as int
+ */
 int MainWindow::sobelX(cv::Point pixelLocation){
 
     cv::Vec3b left_to_x;
@@ -465,15 +486,17 @@ int MainWindow::sobelX(cv::Point pixelLocation){
     int pixelEnergyG = ((int)right_to_x.val[1] - (int)left_to_x.val[1]) / 2;
     int pixelEnergyR = ((int)right_to_x.val[2] - (int)left_to_x.val[2]) / 2;
 
-    // Wieder in den [0..255] Raum bringen.. NO DONT DO THAT!! CAN BE REMOVED
-//    return int((pixelEnergyB + pixelEnergyG + pixelEnergyR)/3);
     return int((pixelEnergyB + pixelEnergyG + pixelEnergyR));
 }
 
-/*
-
-    same for Y-Direction
-*/
+/**
+ * @brief MainWindow::sobelY
+ *
+ *      Applies the sobel filter in Y-direction on the workingCopy at the given pixelLocation
+ *
+ * @param pixelLocation cv::Point Location of the pixel where the sobel filter in y-direction is applied
+ * @return new pixel value as int
+ */
 int MainWindow::sobelY(cv::Point pixelLocation){
 
     cv::Vec3b lower_to_x;
@@ -499,8 +522,6 @@ int MainWindow::sobelY(cv::Point pixelLocation){
     int pixelEnergyG = ((int)lower_to_x.val[1] - (int)upper_to_x.val[1]) / 2;
     int pixelEnergyR = ((int)lower_to_x.val[2] - (int)upper_to_x.val[2]) / 2;
 
-    // Wieder in den [0..255] Raum bringen.. NO DONT DO THAT!! CAN BE REMOVED
-//    return int((pixelEnergyB + pixelEnergyG + pixelEnergyR) / 3);
     return int((pixelEnergyB + pixelEnergyG + pixelEnergyR));
 }
 
